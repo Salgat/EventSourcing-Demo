@@ -22,12 +22,29 @@ namespace DataReader.Controllers
 
         [Route("fullName/{id}")]
         [HttpGet]
-        public async Task<IHttpActionResult> GetData(string id)
+        public IHttpActionResult GetName(string id)
         {
             var result = default(NameDTO);
             try
             {
                 result = _nameBusinessLogic.GetById(id);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(HttpStatusCode.ExpectationFailed);
+            }
+
+            return Ok(result);
+        }
+
+        [Route("fullName")]
+        [HttpGet]
+        public IHttpActionResult GetAllNames()
+        {
+            var result = default(string[]);
+            try
+            {
+                result = _nameBusinessLogic.GetAllNameIds();
             }
             catch (Exception ex)
             {
