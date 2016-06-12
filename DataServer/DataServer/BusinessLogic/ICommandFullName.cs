@@ -9,7 +9,7 @@ namespace DataServer.BusinessLogic
 {
     public interface ICommandFullName
     {
-        Task<string> CreateData(string data1, string data2);
+        Task<string> CreateFullName(string firstName, string lastName);
         Task<bool> UpdateData(string id, string data1, string data2);
         Task<FullName> GetById(string id);
     }

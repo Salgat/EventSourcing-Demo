@@ -21,27 +21,43 @@ namespace DataServer.BusinessLogic
         /// <summary>
         /// Creates a new FullName model and returns the Id of the new model.
         /// </summary>
-        /// <param name="data1"></param>
-        /// <param name="data2"></param>
+        /// <param name="firstName"></param>
+        /// <param name="lastName"></param>
         /// <returns></returns>
-        public async Task<string> CreateData(string data1, string data2)
+        public async Task<string> CreateFullName(string firstName, string lastName)
         {
-            var newId = Guid.NewGuid().ToString();
-            var createdEvent = new FullNameCreatedEvent(newId, data1, data2);
-            var result = await _dataRepository.SaveEvent(createdEvent);
-            return result ? newId : null;
+            var fullName = new FullName();
+            var events = fullName.CreateFullName(firstName, lastName);
+            await RaiseEvents(events);
+            return fullName.Id;
         }
 
-        public async Task<bool> UpdateData(string id, string data1, string data2)
+        public async Task<bool> UpdateData(string id, string firstName, string lastName)
         {
-            var updatedEvent = new FullNameUpdatedEvent(id, data1, data2);
-            var result = await _dataRepository.SaveEvent(updatedEvent);
-            return result;
+            var fullName = await _dataRepository.GetById(id);
+            var events = fullName.UpdateFullName(firstName, lastName);
+            await RaiseEvents(events);
+            return true;
         }
 
         public async Task<FullName> GetById(string id)
         {
             return await _dataRepository.GetById(id);
         }
+
+        #region Event Handling
+
+        private async Task<bool> RaiseEvents(IList<IEvent> events)
+        {
+            foreach (var eventItem in events)
+            {
+                await _dataRepository.SaveEvent(eventItem);
+            }
+
+            return true;
+        }
+
+        #endregion
+
     }
 }

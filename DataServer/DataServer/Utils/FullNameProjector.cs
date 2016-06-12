@@ -10,14 +10,14 @@ namespace DataServer.Utils
 {
     public class FullNameProjector : IFullNameProjector
     {
-        private readonly Dictionary<Type, Action<IEvent, FullName>> _eventHandlers;
+        private readonly Dictionary<string, Action<IEvent, FullName>> _eventHandlers;
 
         public FullNameProjector()
         {
-            _eventHandlers = new Dictionary<Type, Action<IEvent, FullName>>
+            _eventHandlers = new Dictionary<string, Action<IEvent, FullName>>
             {
-                {typeof(FullNameCreatedEvent), (eventData, data) => HandleFullNameCreatedEvent(eventData, ref data)},
-                {typeof(FullNameUpdatedEvent), (eventData, data) => HandleFullNameUpdatedEvent(eventData, ref data)}
+                {typeof(FullNameCreatedEvent).Name, (eventData, data) => HandleFullNameCreatedEvent(eventData, ref data)},
+                {typeof(FullNameUpdatedEvent).Name, (eventData, data) => HandleFullNameUpdatedEvent(eventData, ref data)}
             };
         }
 
@@ -29,7 +29,7 @@ namespace DataServer.Utils
         /// <param name="fullNameModel"></param>
         public void HandleEvent<T>(T eventData, ref FullName fullNameModel) where T : IEvent
         {
-            _eventHandlers[eventData.GetType()](eventData, fullNameModel);
+            _eventHandlers[eventData.GetType().Name](eventData, fullNameModel);
         }
 
         private void HandleFullNameCreatedEvent(IEvent eventData, ref FullName fullNameModel)

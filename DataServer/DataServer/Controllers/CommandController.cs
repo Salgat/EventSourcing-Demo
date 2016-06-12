@@ -29,7 +29,7 @@ namespace DataServer.Controllers
             var resultId = default(string);
             try
             {
-                resultId = await _commandFullNameBusinessLogic.CreateData(firstName, lastName);
+                resultId = await _commandFullNameBusinessLogic.CreateFullName(firstName, lastName);
             }
             catch (Exception ex)
             {
