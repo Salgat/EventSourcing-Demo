@@ -47,38 +47,24 @@ namespace DataReader.Repository
             var fullNameEvents = await _connection.ReadStreamEventsForwardAsync(eventStreamName, StreamPosition.Start, 4096, true);
 
             var events = new List<IEvent>();
+            int? lastEventNumber = null;
             foreach (var resolvedEvent in fullNameEvents.Events)
             {
-                var eventMetaObjectRaw = resolvedEvent.Event.Metadata;
-                var eventMetaObjectAsJson = Encoding.UTF8.GetString(eventMetaObjectRaw);
-                var eventMetaDictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(eventMetaObjectAsJson);
-                var eventName = eventMetaDictionary["EventName"].ToString();
-                var eventType = _eventTypeResolver[eventName];
-
-                var eventObjectRaw = resolvedEvent.Event.Data;
-                var eventObjectAsJson = Encoding.UTF8.GetString(eventObjectRaw);
-                var eventObject = (IEvent)JsonConvert.DeserializeObject(eventObjectAsJson, eventType);
+                var eventObject = ReadEventData(resolvedEvent);
                 events.Add(eventObject);
+
+                lastEventNumber = resolvedEvent.OriginalEvent.EventNumber;
             }
             
             // For each event, find or create a new model, and project the event onto the model
             foreach (var eventData in events)
             {
-                var modelId = eventData.Id;
-                NameDTO model;
-                if (!_names.TryGetValue(modelId, out model))
-                {
-                    _nameIds.Add(modelId);
-                    model = new NameDTO();
-                }
-
-                _modelProjector.HandleEvent(eventData, ref model);
-
-                _names.AddOrUpdate(modelId, model, (key, value) => model);
+                HandleEventData(eventData);
             }
 
-            // Finally, subscribe to the FullName category event stream for future updates.
-            // TODO:
+            // Subscribe to the FullName category event stream for future updates.
+            var catchupSettings = new CatchUpSubscriptionSettings(4096, 4096, false, true);
+            _connection.SubscribeToStreamFrom(eventStreamName, lastEventNumber, catchupSettings, HandleEventFromSubscription, null, ReconnectToStreamSubscription);
 
             return true;
         }
@@ -105,5 +91,69 @@ namespace DataReader.Repository
         {
             return _nameIds.ToArray();
         }
-    }
+
+        #region Process Events
+
+        /// <summary>
+        /// Processes a resolvedEvent and returns a deserialized IEvent.
+        /// </summary>
+        /// <param name="resolvedEvent"></param>
+        /// <returns></returns>
+        private static IEvent ReadEventData(ResolvedEvent resolvedEvent)
+        {
+            var eventMetaObjectRaw = resolvedEvent.Event.Metadata;
+            var eventMetaObjectAsJson = Encoding.UTF8.GetString(eventMetaObjectRaw);
+            var eventMetaDictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(eventMetaObjectAsJson);
+            var eventName = eventMetaDictionary["EventName"].ToString();
+            var eventType = _eventTypeResolver[eventName];
+
+            var eventObjectRaw = resolvedEvent.Event.Data;
+            var eventObjectAsJson = Encoding.UTF8.GetString(eventObjectRaw);
+            var eventData = (IEvent)JsonConvert.DeserializeObject(eventObjectAsJson, eventType);
+            return eventData;
+        }
+
+        /// <summary>
+        /// Projects an IEvent onto a model and updates the in-memory Names.
+        /// </summary>
+        /// <param name="eventData"></param>
+        private static void HandleEventData(IEvent eventData)
+        {
+            var modelId = eventData.Id;
+            NameDTO model;
+            if (!_names.TryGetValue(modelId, out model))
+            {
+                _nameIds.Add(modelId);
+                model = new NameDTO();
+            }
+
+            _modelProjector.HandleEvent(eventData, ref model);
+
+            _names.AddOrUpdate(modelId, model, (key, value) => model);
+        }
+
+        #endregion
+
+        #region Event Subscription
+
+        /// <summary>
+        /// Callback used to handle events from the event stream subscription. Takes event and projects it onto a model, either
+        /// adding or updating the current Name models in memory.
+        /// </summary>
+        /// <param name="subscription"></param>
+        /// <param name="resolvedEvent"></param>
+        private static void HandleEventFromSubscription(EventStoreCatchUpSubscription subscription, ResolvedEvent resolvedEvent)
+        {
+            var eventData = ReadEventData(resolvedEvent);
+            HandleEventData(eventData);
+        }
+
+        private static void ReconnectToStreamSubscription(EventStoreCatchUpSubscription subscription, SubscriptionDropReason reason, Exception exception)
+        {
+            throw new Exception($"Subscription to stream ended due to reason: {exception.Message}");
+        }
+
+        #endregion
+
+        }
 }
