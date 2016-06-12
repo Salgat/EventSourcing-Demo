@@ -41,30 +41,10 @@ namespace DataReader.Repository
             _names = new ConcurrentDictionary<string, NameDTO>();
             _nameIds = new ConcurrentBag<string>();
 
-            // First read all events in the FullName category
-            // TODO: Add paging to handle more than 4096 events
+            // Subscribe to the FullName category event stream for all events now and in the future
             var eventStreamName = "$ce-FullName";
-            var fullNameEvents = await _connection.ReadStreamEventsForwardAsync(eventStreamName, StreamPosition.Start, 4096, true);
-
-            var events = new List<IEvent>();
-            int? lastEventNumber = null;
-            foreach (var resolvedEvent in fullNameEvents.Events)
-            {
-                var eventObject = ReadEventData(resolvedEvent);
-                events.Add(eventObject);
-
-                lastEventNumber = resolvedEvent.OriginalEvent.EventNumber;
-            }
-            
-            // For each event, find or create a new model, and project the event onto the model
-            foreach (var eventData in events)
-            {
-                HandleEventData(eventData);
-            }
-
-            // Subscribe to the FullName category event stream for future updates.
-            var catchupSettings = new CatchUpSubscriptionSettings(4096, 4096, false, true);
-            _connection.SubscribeToStreamFrom(eventStreamName, lastEventNumber, catchupSettings, HandleEventFromSubscription, null, ReconnectToStreamSubscription);
+            var catchupSettings = new CatchUpSubscriptionSettings(4096, 4096, true, true);
+            _connection.SubscribeToStreamFrom(eventStreamName, null, catchupSettings, HandleEventFromSubscription, null, ReconnectToStreamSubscription);
 
             return true;
         }
@@ -148,6 +128,12 @@ namespace DataReader.Repository
             HandleEventData(eventData);
         }
 
+        /// <summary>
+        /// Callback used to handle a dropped subscription to the Name category event stream.
+        /// </summary>
+        /// <param name="subscription"></param>
+        /// <param name="reason"></param>
+        /// <param name="exception"></param>
         private static void ReconnectToStreamSubscription(EventStoreCatchUpSubscription subscription, SubscriptionDropReason reason, Exception exception)
         {
             throw new Exception($"Subscription to stream ended due to reason: {exception.Message}");
@@ -155,5 +141,5 @@ namespace DataReader.Repository
 
         #endregion
 
-        }
+    }
 }
