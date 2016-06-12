@@ -19,11 +19,11 @@ namespace DataReader.Repository
         private static INameProjector _modelProjector;
         private static ConcurrentDictionary<string, NameDTO> _names;
         private static ConcurrentBag<string> _nameIds;
-        private static readonly IDictionary<string, Type> _eventTypeResolver;
+        private static readonly IDictionary<string, Type> EventTypeResolver;
 
         static NameRepository()
         {
-            _eventTypeResolver = new Dictionary<string, Type>()
+            EventTypeResolver = new Dictionary<string, Type>()
             {
                 { typeof(FullNameCreatedEvent).Name, typeof(FullNameCreatedEvent) },
                 { typeof(FullNameUpdatedEvent).Name, typeof(FullNameUpdatedEvent) }
@@ -85,7 +85,7 @@ namespace DataReader.Repository
             var eventMetaObjectAsJson = Encoding.UTF8.GetString(eventMetaObjectRaw);
             var eventMetaDictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(eventMetaObjectAsJson);
             var eventName = eventMetaDictionary["EventName"].ToString();
-            var eventType = _eventTypeResolver[eventName];
+            var eventType = EventTypeResolver[eventName];
 
             var eventObjectRaw = resolvedEvent.Event.Data;
             var eventObjectAsJson = Encoding.UTF8.GetString(eventObjectRaw);

@@ -9,14 +9,14 @@ namespace DataReader.Utils
 {
     public class NameProjector : INameProjector
     {
-        private readonly Dictionary<Type, Action<IEvent, ReferenceHolder<NameDTO>>> _eventHandlers;
+        private readonly Dictionary<string, Action<IEvent, ReferenceHolder<NameDTO>>> _eventHandlers;
 
         public NameProjector()
         {
-            _eventHandlers = new Dictionary<Type, Action<IEvent, ReferenceHolder<NameDTO>>>
+            _eventHandlers = new Dictionary<string, Action<IEvent, ReferenceHolder<NameDTO>>>
             {
-                {typeof(FullNameCreatedEvent), HandleFullNameCreatedEvent},
-                {typeof(FullNameUpdatedEvent), HandleFullNameUpdatedEvent}
+                {typeof(FullNameCreatedEvent).Name, HandleFullNameCreatedEvent},
+                {typeof(FullNameUpdatedEvent).Name, HandleFullNameUpdatedEvent}
             };
         }
 
@@ -29,7 +29,7 @@ namespace DataReader.Utils
         public void HandleEvent<T>(T eventData, ref NameDTO fullNameModel) where T : IEvent
         {
             var referenceHolder = new ReferenceHolder<NameDTO>(fullNameModel);
-            _eventHandlers[eventData.GetType()](eventData, referenceHolder);
+            _eventHandlers[eventData.GetType().Name](eventData, referenceHolder);
             fullNameModel = referenceHolder.Value;
         }
 
